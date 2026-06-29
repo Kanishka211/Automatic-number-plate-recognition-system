@@ -23,7 +23,7 @@ def show_centered(title, frame):
 
 
 # ── Step 1: Load image ─────────────────────────────────────────────────────────
-IMAGE_PATH = 'images/img3.jpeg'
+IMAGE_PATH = 'images/image.png'
 
 original = cv2.imread(IMAGE_PATH)
 if original is None:
