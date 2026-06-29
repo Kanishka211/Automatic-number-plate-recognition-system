@@ -1,0 +1,95 @@
+import cv2
+import pytesseract
+import ctypes
+
+# ── Tesseract path config ──────────────────────────────────────────────────────
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+
+# ── Helper: display window at screen center ────────────────────────────────────
+def show_centered(title, frame):
+    """Opens a named window and positions it at the center of the screen."""
+    user32   = ctypes.windll.user32
+    scr_w    = user32.GetSystemMetrics(0)
+    scr_h    = user32.GetSystemMetrics(1)
+    h, w     = frame.shape[:2]
+    offset_x = (scr_w - w) // 2
+    offset_y = (scr_h - h) // 2
+
+    cv2.namedWindow(title, cv2.WINDOW_NORMAL)
+    cv2.imshow(title, frame)
+    cv2.moveWindow(title, offset_x, offset_y)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+
+
+# ── Step 1: Load image ─────────────────────────────────────────────────────────
+IMAGE_PATH = 'images/img3.jpeg'
+
+original = cv2.imread(IMAGE_PATH)
+if original is None:
+    raise FileNotFoundError(f"Could not load image at '{IMAGE_PATH}'. Check the path.")
+
+show_centered('Original Image', original)
+
+
+# ── Step 2: Preprocess — grayscale + noise reduction ──────────────────────────
+gray_frame = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
+smoothed   = cv2.bilateralFilter(gray_frame, 11, 17, 17)
+
+show_centered('Preprocessed (Grayscale)', smoothed)
+
+
+# ── Step 3: Edge detection ─────────────────────────────────────────────────────
+edges = cv2.Canny(smoothed, 30, 200)
+
+show_centered('Edge Map (Canny)', edges)
+
+
+# ── Step 4: Find contours & isolate plate region ───────────────────────────────
+all_contours, _ = cv2.findContours(edges, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+# Sort by area (largest first), keep top candidates only
+top_contours = sorted(all_contours, key=cv2.contourArea, reverse=True)[:10]
+
+plate_contour = None
+for contour in top_contours:
+    perimeter = cv2.arcLength(contour, True)
+    polygon   = cv2.approxPolyDP(contour, 0.018 * perimeter, True)
+
+    if len(polygon) == 4:          # rectangular shape → likely a plate
+        plate_contour = polygon
+        break
+
+if plate_contour is None:
+    print("Plate not detected. Try adjusting thresholds or using a clearer image.")
+    cv2.destroyAllWindows()
+    exit()
+
+
+# ── Step 5: Crop the plate region ─────────────────────────────────────────────
+px, py, pw, ph = cv2.boundingRect(plate_contour)
+plate_crop      = smoothed[py : py + ph, px : px + pw]
+
+show_centered('Detected Plate Region', plate_crop)
+
+
+# ── Step 6: OCR — read plate text ─────────────────────────────────────────────
+plate_text = pytesseract.image_to_string(plate_crop, config='--psm 8').strip()
+print(f"[ANPR] Plate detected → {plate_text}")
+
+
+# ── Step 7: Annotate and display final output ──────────────────────────────────
+output = original.copy()
+
+cv2.drawContours(output, [plate_contour], -1, (0, 255, 0), 3)
+cv2.putText(
+    output,
+    plate_text,
+    (px, py - 10),
+    cv2.FONT_HERSHEY_SIMPLEX,
+    1,
+    (0, 255, 0),
+    2
+)
+
+show_centered('ANPR — Final Output', output)
