@@ -50,7 +50,7 @@ pip install opencv-python pytesseract
 
 ## ▶️ How to Run
 
-1. Add your test image at `images/img1.png` (create the `images/` folder if it doesn't exist)
+1. Add your test image at `image.png` (create the `images/` folder if it doesn't exist)
 2. Run the script:
 
 ```bash
@@ -100,14 +100,7 @@ ANPR-project/
 └── README.md
 ```
 
----
-
-## 📸 Sample Output
-
-> *(Add a before/after screenshot here once tested)*
-
----
-
 ## 🔗 Certificate
+[View Certificate](certificate.png)
 
 Completed the Skillected ANPR Live Webinar with a digitally signed certificate of completion.
